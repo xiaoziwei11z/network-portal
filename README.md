@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # vueAdmin-template
 
 > A minimal vue admin template with Element UI & axios & iconfont & permission control & lint
@@ -42,3 +43,7 @@ If you want router permission && generate menu by user roles , you can use this 
 [MIT](https://github.com/PanJiaChen/vueAdmin-template/blob/master/LICENSE) license.
 
 Copyright (c) 2017-present PanJiaChen
+=======
+# dn-portal
+
+>>>>>>> c701b736e8d1b20b85d55de456c5664c432bdf62
