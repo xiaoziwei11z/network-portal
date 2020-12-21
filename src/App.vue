@@ -1,11 +1,22 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <Topo/>
   </div>
 </template>
 
 <script>
+import Topo from './components/Topo'
+
 export default {
-  name: 'app'
+  name: 'app',
+  components: {
+    Topo
+  }
 }
 </script>
+
+<style>
+body {
+  margin: 0;
+}
+</style>
