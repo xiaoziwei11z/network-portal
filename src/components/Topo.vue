@@ -1,116 +1,208 @@
 <template>
-  <el-container style="height: 100vh;">
+  <div>
+  <el-container>
     <!-- 页眉 -->
     <el-header class="header-container">
       <h1 class="title">单臂路由-25组</h1>
     </el-header>
-    <el-container style="text-align:center">
-      <!-- 拓扑画板 -->
-      <el-main class="board-container">
-        <!-- 画板 -->
-        <svg 
-        class="board" 
-        ondragover="return false" 
-        oncontextmenu="return false">
-          <!-- 已连接的线 -->
-          <line
-          v-for="(item, index) in lineings"
-          :key="index"
-          :x1="item.x1" :y1="item.y1"
-          :x2="item.x2" :y2="item.y2"
-          style="stroke:rgb(255,0,0);stroke-width:2"/>
-          <!-- topo图上的节点 -->
-          <g v-for="(item) in topoNodes" :key="item.id">
-            <image :xlink:href="item.pic" width="50px" height="50px" :x="item.x" :y="item.y"></image>
-            <text :x="item.x + 25" :y="item.y + 66" style="text-anchor: middle; user-select: none;">{{item.name}}</text>
-          </g>
-        </svg>
-      </el-main>
-    </el-container>
-
-    <el-container style="text-align:center">
-      <el-main class="board-container">
-        <el-steps :active="active" align-center>
-          <el-step title="步骤1" description="这是一段很长很长很长的描述性文字"></el-step>
-          <el-step title="步骤2" description="这是一段很长很长很长的描述性文字"></el-step>
-          <el-step title="步骤3" description="这是一段很长很长很长的描述性文字"></el-step>
-          <el-step title="步骤4" description="这是一段很长很长很长的描述性文字"></el-step>
-        </el-steps>
-         <el-button style="margin-top: 12px;" @click="next" :disabled="isdis">下一步</el-button>
-      </el-main>
-    </el-container>
   </el-container>
+  <div style="text-align:center">
+      <el-row>
+        <br>
+        <br>
+        <br>
+        <el-col>
+          <el-steps :active="active" align-center finish-status="success">
+            <el-step title="操作步骤1" description="配置Switch划分VLAN10和VLAN20"></el-step>
+            <el-step title="验证步骤1" description="Switch验证show vlan brief，正确划分"></el-step>
+            <el-step title="操作步骤2" description="配置Switch fa0/1为Trunk接口，与Router互连"></el-step>
+            <el-step title="操作步骤3" description="将Router fa0/0划分为两个子接口"></el-step>
+            <el-step title="验证步骤2" description="验证Router可以ping通PC1和PC2，证明可以相互ping通"></el-step>
+            <el-step title="验证步骤3" description="验证router路由表"></el-step>
+          </el-steps>
+        </el-col>
+      </el-row>
+        <br>
+        <br>
+        <br>
+      <el-row style="height:30px">
+          <el-alert
+            :title="successmsg"
+            type="success"
+            v-show="successShow"
+            show-icon center>
+          </el-alert>
+          <el-alert
+            :title="errormsg"
+            type="error"
+            v-show="errorShow"
+            show-icon center>
+          </el-alert>
+      </el-row>
+        <br>
+        <br>
+      <hr>
+        <br>
+      <el-row>
+        <el-col :span="200" style="width:50%"><img src="../assets/topo.jpg"></el-col>
+        <el-col :span=10000 style="width:48%">Termina
+          <el-input
+            type="textarea"
+            :rows="10"
+            readonly="true"
+            class="res-area"
+            v-model="res">
+          </el-input>
+        </el-col>
+      </el-row>
+      <hr>
+      <br>
+      <el-row>
+         <el-button style="height:5%;width:10%; background-color: rgb(161, 207, 35);color:#FFF" @click="next" :disabled="isdis" :loading="buttonLoading">{{buttonname}}</el-button>
+      </el-row>
+      <br>
+    </div>
+    </div>
 </template>
 
 <script>
+import telnetApi from '@/api/telnet.js'
+import Stomp from 'stompjs'
+
 export default {
   name: 'Topo',
   data () {
     return {
-      topoNodes: [], // topo图中的节点
-      topoLinks: [], // topo图中的连线
-      lineings:{},
       active: 0,
-      isdis:false
+      isdis:false,
+      buttonname:"下一步",
+      successmsg:'',
+      errormsg:'',
+      successShow:false,
+      errorShow:false,
+      switch:{},
+      router:{},
+      buttonLoading:false,
+      client: Stomp.client("ws://127.0.0.1:65081/stomp"),
+      res:'asfffffffffffffffasfffffffffffffffff'
     }
   },
   methods: {
     next() {
-      if (this.active++ > 3) isdis=true;
-    },
-    // 新建节点
-    dropToBoard (src,name,x,y,i) {
-      const content = JSON.parse(JSON.stringify({pic: src, name: name})) // 接收来自拖出的内容,并还原为对象
-      let node = {
-        id: i, // 用时间戳生成唯一id，Symbol类型的id不能存储到本地
-        pic: content.pic, // 图片
-        name: content.name, // 默认显示名称，可修改
-        x: x, // 横坐标
-        y: y, // 纵坐标
+      this.successmsg=''
+      this.errormsg=''
+      this.successShow=false;
+      this.errorShow=false;
+      this.buttonLoading=true;
+      if (this.active > 4){
+        this.isdis=true;
+        this.buttonname="已完成"
+        this.active++;
+        this.open();
+      }else{
+        this.doTelnet(this.active)
       }
-      this.topoNodes.push(node)
+      this.buttonLoading=false;
     },
-    // 连接节点
-    moveAndLink (startIndex,index) {
-      // 连线模式
-      this.topoLinks.push({
-        startNodeId: this.topoNodes[startIndex].id,
-        endNodeId: this.topoNodes[index].id,
-        startInterface: 'fa0/1',
-        endInterface: 'fa0/1'
+    doTelnet(active){
+      switch(active){
+        case 0:telnetApi.makevlan(this.switch).then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        }); break;
+        case 1:telnetApi.vlan().then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        }); break;
+        case 2:telnetApi.trunk().then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        }); break;
+        case 3:telnetApi.divide(this.router).then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        }); break;
+        case 4:telnetApi.ping().then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        }); break;
+        case 5:telnetApi.iproute().then(resp=>{
+          if(resp.data.flag){
+            this.successmsg=resp.data.message
+            this.successShow=true;
+             this.active++;
+          }else{
+            this.errormsg=resp.data.message
+            this.errorShow=true;
+            this.buttonname='重试'
+          }
+        });
+      }
+    },
+    open() {
+      this.$alert('所有Telnet步骤已完成，网络配置成功', '配置成功', {
+        confirmButtonText: '确定',
+        callback: action => {
+        }         
       })
     },
-    lines () {
-      let hash = {}
-      const OFFSET = 20
-      this.topoNodes.forEach((node, index) => {
-        hash[node.id] = index
-      })
-      return this.topoLinks.map(item => {
-        const startNode = this.topoNodes[hash[item.startNodeId]]
-        const endNode = this.topoNodes[hash[item.endNodeId]]
-        return {
-          x1: startNode.x + OFFSET,
-          y1: startNode.y + OFFSET,
-          x2: endNode.x + OFFSET,
-          y2: endNode.y + OFFSET,
-          startInterface: item.startInterface,
-          endInterface: item.endInterface
-        }
-      })
+    connect(){
+      var clientid = util.uuid()
+      var headers = {
+        'client-id': clientid
+      }
+      this.client.connect(headers, this.onConnected, this.onFailed)
+    },
+    onConnected: function (frame) {
+      console.log('Connected: ' + frame)
+      var topic = '/topic/AllCustomer'  
+      this.client.subscribe(topic, this.responseCallback, this.onFailed) 
+    },
+    onFailed: function (frame) {
+      console.log('Failed: ' + frame)
+    },
+    responseCallback: function (frame) {
+      console.log('responseCallback msg=>' + frame.body)
+      this.res += frame.body
     },
   },
   created () {
-    this.dropToBoard(require('../data/img/router.png'),'Router',600,50,1)
-    this.dropToBoard(require('../data/img/switch.png'),'Switch',900,50,2)
-    this.dropToBoard(require('../data/img/server.png'),'PC1',750,200,3)
-    this.dropToBoard(require('../data/img/server.png'),'PC2',1050,200,4)
-    this.dropToBoard(require('../data/img/server.png'),'PC3',1200,50,5)
-    this.moveAndLink(0,1)
-    this.moveAndLink(1,2)
-    this.moveAndLink(1,3)
-    this.moveAndLink(1,4)
-    this.lineings=this.lines();
+    this.connect();
   },
 }
 </script>
@@ -145,7 +237,7 @@ export default {
   width: 100%;
 }
 .header-container {
-  background-color: #409EFF;
+  background-color: rgb(35, 187, 207);
 }
 .title {
   margin: 0;
@@ -153,7 +245,10 @@ export default {
   color: #FFF;
 }
 .address {
-  color: #409EFF;
+  color: rgb(35, 187, 207);
   line-height: 60px;
+}
+.res-area {
+  color: rgb(35, 187, 207);
 }
 </style>
