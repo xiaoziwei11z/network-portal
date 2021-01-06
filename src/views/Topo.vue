@@ -26,6 +26,7 @@
           </div>
           <div class="ter-area">Terminal
             <el-input
+              id="textarea_id"
               type="textarea"
               :rows="14"
               readonly="true"
@@ -97,7 +98,15 @@ export default {
     },
     message(data) {                                 //监听message事件，方法是后台定义和提供的
       console.log('responseCallback msg=>' + data)
-      this.res += data
+      this.res += data.msg
+      const textarea = document.getElementById('textarea_id');
+      textarea.scrollTop = textarea.scrollHeight;
+    },
+    response_data(data){
+    	console.log('返回:'+data);
+      this.res += data.msg
+      const textarea = document.getElementById('textarea_id');
+      textarea.scrollTop = textarea.scrollHeight;
     }
 },
   methods: {
