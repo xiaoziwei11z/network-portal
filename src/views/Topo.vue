@@ -109,11 +109,11 @@ export default {
       this.errormsg=''
       this.successShow=false;
       this.errorShow=false;
-      this.buttonLoading=true;
       this.doTelnet(this.active)
-      this.buttonLoading=false;
+      this.res=''
     },
     doTelnet(active){
+      this.buttonLoading=true;
       switch(active){
         case 0:telnetApi.makevlan(this.switch).then(resp=>{
           if(resp.data.flag){
@@ -127,6 +127,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         }); break;
         case 1:telnetApi.vlan().then(resp=>{
           if(resp.data.flag){
@@ -140,6 +141,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         }); break;
         case 2:telnetApi.trunk().then(resp=>{
           if(resp.data.flag){
@@ -153,6 +155,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         }); break;
         case 3:telnetApi.divide(this.router).then(resp=>{
           if(resp.data.flag){
@@ -166,6 +169,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         }); break;
         case 4:telnetApi.ping().then(resp=>{
           if(resp.data.flag){
@@ -179,6 +183,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         }); break;
         case 5:telnetApi.iproute().then(resp=>{
           if(resp.data.flag){
@@ -194,6 +199,7 @@ export default {
             this.errorShow=true;
             this.buttonname='重试'
           }
+          this.buttonLoading=false;
         });
       }
     },
